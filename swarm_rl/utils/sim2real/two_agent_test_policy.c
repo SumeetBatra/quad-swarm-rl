@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 
+#define NEIGHBORS 3
+#define NUM_OBS 6
 
 typedef struct control_t_n {
 	float thrust_0;
@@ -11,7 +13,8 @@ typedef struct control_t_n {
 	float thrust_3;
 } control_t_n;
 
-void networkEvaluate(control_t_n* control_n, const float* state_array, const float* neighbor_array);
+void networkEvaluate(control_t_n* control_n, const float* state_array);
+void neighborEmbeddings(const float neighbor_array[NEIGHBORS][NUM_OBS]);
 
 float linear(float num) {
 	return num;
@@ -54,7 +57,45 @@ static const float actor_encoder_self_encoder_0_bias[64] = {-0.26817241311073303
 static const float actor_encoder_self_encoder_2_bias[64] = {0.042353153228759766,-0.04251067340373993,0.023269448429346085,0.015775416046380997,0.029558075591921806,0.002219744957983494,0.05171140283346176,0.06870424747467041,0.013478025794029236,0.014894625172019005,0.02031378448009491,0.03056401200592518,-0.04572051018476486,-0.15475577116012573,-0.1772482991218567,0.021887343376874924,-0.006207791157066822,0.09863786399364471,-0.17401690781116486,0.02836037613451481,0.03455173224210739,0.0824936181306839,-0.05317943915724754,0.04798790067434311,0.1285826712846756,-0.06663624197244644,0.0022632363252341747,-0.02084888331592083,0.0016439963364973664,0.05395182967185974,0.06768638640642166,-0.06680908054113388,-0.011423017829656601,0.10402906686067581,-0.006474097725003958,0.031981389969587326,-0.06356416642665863,-0.08758220821619034,-0.02099732868373394,-0.06908164918422699,0.016684187576174736,0.06608288735151291,-0.07992420345544815,0.04205721989274025,0.02806043066084385,-0.05574362725019455,0.018462255597114563,0.10256145894527435,-0.009270190261304379,0.012925353832542896,0.0037044768687337637,0.03169308230280876,-0.027797797694802284,-0.020461663603782654,0.13119126856327057,0.03422730416059494,-0.04337906464934349,-0.023231612518429756,0.035532884299755096,-0.006870429031550884,0.04378151893615723,0.0008850099984556437,0.03698922321200371,-0.09525947272777557};
 static const float actor_encoder_feed_forward_0_bias[128] = {0.11855404078960419,-0.028130175545811653,0.014244566671550274,-0.013354182243347168,-0.02650628238916397,0.0024041582364588976,-0.01888393424451351,0.02173340879380703,0.03479362651705742,0.025614801794290543,0.010743812657892704,-0.01079088356345892,-0.02008691616356373,0.027052151039242744,0.01192475762218237,-0.05475637689232826,0.002740930300205946,0.0028450130484998226,-0.015393250621855259,0.03110175020992756,0.05193556472659111,-0.017888806760311127,-0.023875342682003975,0.01332478504627943,-0.0221629086881876,-0.04410545155405998,-0.023834265768527985,2.2958369299885817e-05,0.03338388726115227,0.013567940331995487,0.015923624858260155,0.025645505636930466,-0.020695295184850693,-0.02375444956123829,-0.025712214410305023,-0.06025295704603195,0.011476131156086922,-0.006959347054362297,0.037773679941892624,0.006462147459387779,0.012720661237835884,-0.02367832139134407,-0.006233139429241419,0.013747742399573326,-0.039389364421367645,-0.023576948791742325,-0.038928378373384476,0.03507031500339508,-0.0025918439496308565,-0.02373480424284935,-0.010726847685873508,0.010217099450528622,-0.03887791186571121,-0.061797697097063065,0.016594793647527695,0.06634286791086197,0.004401526413857937,0.008704409003257751,-0.20035715401172638,-0.03178828954696655,-0.08149716258049011,-0.021178191527724266,-0.025774113833904266,-0.059818074107170105,-0.023189863190054893,0.006712788715958595,0.04486855864524841,0.02200118824839592,-0.023904168978333473,-0.044903408735990524,-0.003532269038259983,-0.001861015916801989,0.03820832818746567,0.07135246694087982,-0.0041763437911868095,-0.004433644004166126,0.010310579091310501,0.020452188327908516,-0.0005928351311013103,0.014292504638433456,0.0030657134484499693,-0.008748557418584824,-0.04907023906707764,-0.04350932687520981,0.011993605643510818,0.025808624923229218,0.014753935858607292,-0.05783984437584877,0.03793662041425705,0.01892237365245819,-0.006696460768580437,-0.02032586559653282,-0.06174379214644432,-0.04079953953623772,0.0886332094669342,-0.014932614751160145,0.030101794749498367,0.024898504838347435,-0.04692748561501503,0.010240918025374413,-0.03305414691567421,0.030365334823727608,-0.03158675134181976,-0.001309177023358643,-0.025436753407120705,-0.018038077279925346,-0.07985501736402512,-0.03183719888329506,-0.005584651604294777,-0.030737483873963356,-0.019561417400836945,0.02404102310538292,0.06122267618775368,0.008470561355352402,0.04845741018652916,0.003766882000491023,0.040182892233133316,-0.04008587822318077,0.02718537673354149,-0.011399456299841404,0.07669058442115784,-0.015452327206730843,0.0033496245741844177,0.06741582602262497,0.0004681598802562803,-0.1013927012681961,-0.007058572489768267,-0.01070733554661274};
 static const float action_parameterization_distribution_linear_bias[4] = {0.008828089572489262,-0.014393017627298832,0.017745226621627808,0.01641642302274704};
-void networkEvaluate(struct control_t_n *control_n, const float *state_array, const float *neighbor_array) {
+void neighborEmbeddings(const float neighbors_array[NEIGHBORS][NUM_OBS]) {
+  //reset embeddings accumulator to zero
+  for (int i = 0; i < 16; i++) {
+    neighbor_embeds[i] = 0;
+  }
+
+  // get the neighbor embeddings
+  for (int n = 0; n < NEIGHBORS; n++) {
+    const float * neighbor_array = neighbors_array[n];
+    for (int i = 0; i < structure[2][1]; i++) {
+      output_2[i] = 0;
+      for (int j = 0; j < structure[2][0]; j++) {
+        output_2[i] += neighbor_array[j] * actor_encoder_neighbor_encoder_embedding_mlp_0_weight[j][i];
+      }
+      output_2[i] += actor_encoder_neighbor_encoder_embedding_mlp_0_bias[i];
+      output_2[i] = tanhf(output_2[i]);
+    }
+
+    for (int i = 0; i < structure[3][1]; i++) {
+//      embedding_array[i + self_size] = 0;
+      for (int j = 0; j < structure[3][0]; j++) {
+//        embedding_array[i+self_size] += output_2[j] * actor_encoder_neighbor_encoder_embedding_mlp_2_weight[j][i];
+          neighbor_embeds[i] += output_2[j] * actor_encoder_neighbor_encoder_embedding_mlp_2_weight[j][i];
+      }
+//      embedding_array[i+ self_size] += actor_encoder_neighbor_encoder_embedding_mlp_2_bias[i];
+//      embedding_array[i + self_size] = tanhf(embedding_array[i + self_size]);
+        neighbor_embeds[i] += actor_encoder_neighbor_encoder_embedding_mlp_2_bias[i];
+        neighbor_embeds[i] = tanhf(neighbor_embeds[i]);
+    }
+  }
+
+  int self_size = structure[1][1]; // size of self embeddings. Need to offset by this much in the embedding array
+  // get mean embeddings
+  for (int i = 0; i < structure[3][1]; i++) {
+    embedding_array[i+self_size] = neighbor_embeds[i] / NEIGHBORS;
+  }
+}
+
+void networkEvaluate(struct control_t_n *control_n, const float *state_array) {
         // first get the self embeddings
         for (int i = 0; i < structure[0][1]; i++) {
             output_0[i] = 0;
@@ -72,27 +113,6 @@ void networkEvaluate(struct control_t_n *control_n, const float *state_array, co
             }
             embedding_array[i] += actor_encoder_self_encoder_2_bias[i];
             embedding_array[i] = tanhf(embedding_array[i]);
-        }
-
-
-        // get the neighbor embeddings
-        for (int i = 0; i < structure[2][1]; i++) {
-            output_2[i] = 0;
-            for (int j = 0; j < structure[2][0]; j++) {
-                output_2[i] += neighbor_array[j] * actor_encoder_neighbor_encoder_embedding_mlp_0_weight[j][i];
-            }
-            output_2[i] += actor_encoder_neighbor_encoder_embedding_mlp_0_bias[i];
-            output_2[i] = tanhf(output_2[i]);
-        }
-
-        int self_size = structure[1][1]; // size of self embeddings. Need to offset by this much in the embedding array
-        for (int i = 0; i < structure[3][1]; i++) {
-            embedding_array[i + self_size] = 0;
-            for (int j = 0; j < structure[3][0]; j++) {
-                embedding_array[i+self_size] += output_2[j] * actor_encoder_neighbor_encoder_embedding_mlp_2_weight[j][i];
-            }
-            embedding_array[i+ self_size] += actor_encoder_neighbor_encoder_embedding_mlp_2_bias[i];
-            embedding_array[i + self_size] = tanhf(embedding_array[i + self_size]);
         }
 
 
@@ -162,7 +182,8 @@ int main()
                 std:: cout << x << ' ';
 
             control_t_n motorThrusts;
-            networkEvaluate(&motorThrusts, state.data(), neighbor.data());
+            neighborEmbeddings(neighbor.data());
+            networkEvaluate(&motorThrusts, state.data());
 
             std::cout << "Controls: ";
             std::cout << motorThrusts.thrust_0 << ' ' << motorThrusts.thrust_1 << ' ' << motorThrusts.thrust_2 << ' ' << motorThrusts.thrust_3 << std::endl;

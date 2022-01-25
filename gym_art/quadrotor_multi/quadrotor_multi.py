@@ -1,4 +1,5 @@
 import copy
+import logging
 from collections import deque
 
 import numpy as np
@@ -15,6 +16,7 @@ from gym_art.quadrotor_multi.quadrotor_single import GRAV, QuadrotorSingle
 from gym_art.quadrotor_multi.quadrotor_multi_visualization import Quadrotor3DSceneMulti
 from gym_art.quadrotor_multi.quad_scenarios import create_scenario
 from gym_art.quadrotor_multi.quad_obstacle_utils import OBSTACLES_SHAPE_LIST
+from sample_factory.utils.utils import log
 
 EPS = 1E-6
 
@@ -196,6 +198,8 @@ class QuadrotorEnvMulti(gym.Env):
         self.last_step_unique_collisions = False
         self.crashes_in_recent_episodes = deque([], maxlen=100)
         self.crashes_last_episode = 0
+        self.num_collisions = 0
+        self.dist_to_target = 0
 
     def set_room_dims(self, dims):
         # dims is a (x, y, z) tuple
@@ -215,8 +219,10 @@ class QuadrotorEnvMulti(gym.Env):
         cur_vel = self.envs[i].dynamics.vel
         pos_neighbor = np.stack([self.envs[j].dynamics.pos for j in indices])
         vel_neighbor = np.stack([self.envs[j].dynamics.vel for j in indices])
+        # vel_neighbor = np.stack([0, 0, 0] for j in indices)
         pos_rel = pos_neighbor - cur_pos
         vel_rel = vel_neighbor - cur_vel
+        # vel_rel = vel_neighbor
         return pos_rel, vel_rel
 
     def get_rel_pos_vel_stack(self):

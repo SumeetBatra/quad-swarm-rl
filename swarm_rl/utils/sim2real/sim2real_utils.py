@@ -251,9 +251,9 @@ if __name__ == '__main__':
 
     ####################################################################################################################
     # # SAVE SF AND SIM2REAL POLICY WEIGHTS INTO A TEXT FILE (for testing correctness)
-    model_path = '../../train_dir/quads_multi_mix_network_ablate_8a_deepsets_v116/quad_mix_network_ablate-8_mixed_/04_quad_mix_network_ablate-8_mixed_qua_mean_embed_see_1111_quad_32_hid_64/checkpoint_p0/checkpoint_000976564_1000001536.pth'
+    model_path = '../../train_dir/quad_mix_baseline-small-8_mixed_attn_/02_quad_mix_baseline-small-8_mixed_attn_qua_mean_embed_see_3333_tra_5000000000_ann_0_hid_32_quad_16/checkpoint_p0/checkpoint_003869469_3962336256.pth'
     model_path = os.path.join(os.path.dirname(__file__), model_path)
-    cfg_path = '../../train_dir/quads_multi_mix_network_ablate_8a_deepsets_v116/quad_mix_network_ablate-8_mixed_/04_quad_mix_network_ablate-8_mixed_qua_mean_embed_see_1111_quad_32_hid_64/cfg.json'
+    cfg_path = '../../train_dir/quad_mix_baseline-small-8_mixed_attn_/02_quad_mix_baseline-small-8_mixed_attn_qua_mean_embed_see_3333_tra_5000000000_ann_0_hid_32_quad_16/cfg.json'
     cfg_path = os.path.join(os.path.dirname(__file__), cfg_path)
     sf_policy = load_sf_model(model_path, cfg_path)
     print(sf_policy)
@@ -261,7 +261,7 @@ if __name__ == '__main__':
     generate_weights(sf_policy, output_path="sf_model_weights.txt", transpose=True)
     # save weights of sim2real policy
     generate_weights(sim2real_policy, output_path="sim2real_model_weights.txt", transpose=True)
-    generate_c_model(sf_policy, output_path="multi_agent_test_policy.c")
+    generate_c_model(sf_policy, output_path="c_models/multi_agent_test_policy.c")
     ####################################################################################################################
 
     # test outputs of PyTorch model given a random observation that can be compared to the c* version of the model
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     # for multi-agent policies
     neighbor_obs_rel = [
         [1, 1, 1, -1, -1, -1], # neighbor to my top right moving towards me
-        [0, -1, 0, 0, 1, 0], # neighbor to my left moving away from me
+        # [0, -1, 0, 0, 1, 0], # neighbor to my left moving away from me
     ]
 
     vxyz_R_omega = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
@@ -302,6 +302,6 @@ if __name__ == '__main__':
             print(f'Relative Pos: {pos}, Neighbor Obs Rel: {neighbor_obs}, Sample Factory Output: {SF_out} \n')
 
     # Compare PyTorch SF model output to C++ SF Model output
-    output = subprocess.run(['/usr/bin/g++', 'two_agent_test_policy.c', './a.out'], stdout=subprocess.PIPE)
-    res = subprocess.call('./a.out')
-    print(res)
+    # output = subprocess.run(['/usr/bin/g++', 'two_agent_test_policy.c', './a.out'], stdout=subprocess.PIPE)
+    # res = subprocess.call('./a.out')
+    # print(res)

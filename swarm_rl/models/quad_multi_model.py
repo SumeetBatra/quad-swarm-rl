@@ -1,10 +1,11 @@
 import torch
+import numpy as np
 from torch import nn
 
 from sample_factory.algorithms.appo.model_utils import nonlinearity, EncoderBase, \
     register_custom_encoder, ENCODER_REGISTRY, fc_layer
 from sample_factory.algorithms.utils.pytorch_utils import calc_num_elements
-
+from swarm_rl.utils.sim2real.cmake_pybind11.c_network.extension.c_network import Network
 
 class QuadNeighborhoodEncoder(nn.Module):
     def __init__(self, cfg, self_obs_dim, neighbor_obs_dim, neighbor_hidden_size, num_use_neighbor_obs):
@@ -133,10 +134,13 @@ class QuadMultiEncoder(EncoderBase):
         self.neighbor_obs_type = cfg.neighbor_obs_type
         self.use_spectral_norm = cfg.use_spectral_norm
         self.obstacle_mode = cfg.quads_obstacle_mode
+        self.c_network = Network()
+        self.tick = 0
         if cfg.quads_local_obs == -1:
             self.num_use_neighbor_obs = cfg.quads_num_agents - 1
         else:
             self.num_use_neighbor_obs = cfg.quads_local_obs
+        self.embeds = [[0] * 24] * (self.num_use_neighbor_obs+1)
 
         if self.neighbor_obs_type == 'pos_vel_goals':
             self.neighbor_obs_dim = 9  # include goal pos info
@@ -231,6 +235,27 @@ class QuadMultiEncoder(EncoderBase):
             obstacle_mean_embed = torch.mean(obstacle_embeds, dim=1)
             embeddings = torch.cat((embeddings, obstacle_mean_embed), dim=1)
 
+        ######################################################################################################
+        # Use c++ network instead of pytorch model. Turning this on will bypass the actions produced by the
+        # pytorch model entirely
+        # obs_neighbors = obs[:, self.self_obs_dim:self.self_obs_dim + all_neighbor_obs_size]
+        # obs_neighbors = obs_neighbors.reshape(-1, self.neighbor_obs_dim)
+        #
+        # obs_self_list = [o.tolist() for o in obs_self]
+        # obs_neighbors_list = obs_neighbors.tolist()
+        #
+        # thrusts = []
+        # for i in range(0, len(obs_neighbors_list), self.num_use_neighbor_obs):
+        #     neighbor_obs = obs_neighbors_list[i: i + self.num_use_neighbor_obs]
+        #     if self.tick % 5 == 0:
+        #         self.embeds[i//self.num_use_neighbor_obs] = self.c_network.neighbor_embeds(neighbor_obs)
+        #     thrusts.append(self.c_network.forward(obs_self_list[i//self.num_use_neighbor_obs], self.embeds[i//self.num_use_neighbor_obs]))
+        #     # thrusts.append(self.c_network.forward(obs_self_list[i]))
+        #
+        # thrusts = torch.Tensor(thrusts)
+        # obs_dict['actions'] = thrusts
+        # self.tick += 1
+        ##################################################################################################
         out = self.feed_forward(embeddings)
         return out
 
