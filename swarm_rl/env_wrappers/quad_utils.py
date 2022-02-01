@@ -93,7 +93,7 @@ def make_quadrotor_env_multi(cfg, **kwargs):
         local_metric=cfg.quads_local_metric,
         local_coeff=cfg.quads_local_coeff,  # how much velocity matters in "distance" calculation
         use_replay_buffer=use_replay_buffer, obstacle_obs_mode=cfg.quads_obstacle_obs_mode,
-        obst_penalty_fall_off=cfg.quads_obst_penalty_fall_off,
+        obst_penalty_fall_off=cfg.quads_obst_penalty_fall_off, early_termination=cfg.quads_early_termination,
     )
 
     if use_replay_buffer:

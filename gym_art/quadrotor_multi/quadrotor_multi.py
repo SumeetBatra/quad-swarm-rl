@@ -35,7 +35,7 @@ class QuadrotorEnvMulti(gym.Env):
                  adaptive_env=False, obstacle_traj='gravity', local_obs=-1, collision_hitbox_radius=2.0,
                  collision_falloff_radius=2.0, collision_smooth_max_penalty=10.0,
                  local_metric='dist', local_coeff=0.0, use_replay_buffer=False,
-                 obstacle_obs_mode='relative', obst_penalty_fall_off=10.0, vis_acc_arrows=False,
+                 obstacle_obs_mode='relative', obst_penalty_fall_off=10.0, early_termination=False, vis_acc_arrows=False,
                  viz_traces=25, viz_trace_nth_step=1):
 
         super().__init__()
@@ -196,6 +196,10 @@ class QuadrotorEnvMulti(gym.Env):
         self.last_step_unique_collisions = False
         self.crashes_in_recent_episodes = deque([], maxlen=100)
         self.crashes_last_episode = 0
+        self.enable_collisions = False
+
+        self.early_termination = early_termination
+        self.contact_ground_post_collision = [0] * self.num_agents
 
     def set_room_dims(self, dims):
         # dims is a (x, y, z) tuple
@@ -316,6 +320,17 @@ class QuadrotorEnvMulti(gym.Env):
         res = abs(np.mean(self.crashes_in_recent_episodes)) < 1 and len(self.crashes_in_recent_episodes) >= 10
         return res
 
+    def early_terminate(self, infos):
+        """
+        Disable experience collection for drones that collide with each other and stay on the ground
+        for more than 1 second.
+        """
+        for i in range(self.num_agents):
+            if self.all_collisions['drone'][i] and self.all_collisions['ground'][i] and self.early_termination:
+                self.contact_ground_post_collision[i] += 1
+                if self.contact_ground_post_collision[i] >= 100: # collides with and stays on the ground for more than 1 second
+                    infos[i]['is_active'] = False
+
     def init_scene_multi(self):
         models = tuple(e.dynamics.model for e in self.envs)
         self.scene = Quadrotor3DSceneMulti(
@@ -332,9 +347,13 @@ class QuadrotorEnvMulti(gym.Env):
         self.quads_formation_size = self.scenario.formation_size
         self.goal_central = np.mean(self.scenario.goals, axis=0)
 
-        # try to activate replay buffer if enabled
+        # model collisions b/w drones after they learn how to fly
+        if not self.enable_collisions:
+            self.enable_collisions = self.can_drones_fly()
+
+            # try to activate replay buffer if enabled
+        self.crashes_in_recent_episodes.append(self.crashes_last_episode)
         if self.use_replay_buffer and not self.activate_replay_buffer:
-            self.crashes_in_recent_episodes.append(self.crashes_last_episode)
             self.activate_replay_buffer = self.can_drones_fly()
 
         if self.adaptive_env:
@@ -391,8 +410,7 @@ class QuadrotorEnvMulti(gym.Env):
 
         obs = self.add_neighborhood_obs(obs)
 
-        if self.use_replay_buffer and not self.activate_replay_buffer:
-            self.crashes_last_episode += infos[0]["rewards"]["rew_crash"]
+        self.crashes_last_episode += infos[0]["rewards"]["rew_crash"]
 
         # Calculating collisions between drones
         drone_col_matrix, self.curr_drone_collisions, distance_matrix = calculate_collision_matrix(self.pos, self.quad_arm, self.collision_hitbox_radius)
@@ -412,15 +430,20 @@ class QuadrotorEnvMulti(gym.Env):
         rew_collisions_raw = np.zeros(self.num_agents)
         if self.last_step_unique_collisions.any():
             rew_collisions_raw[self.last_step_unique_collisions] = -1.0
-        rew_collisions = self.rew_coeff["quadcol_bin"] * rew_collisions_raw
+        if self.enable_collisions:
+            rew_collisions = self.rew_coeff["quadcol_bin"] * rew_collisions_raw
+            # penalties for being too close to other drones
+            rew_proximity = -1.0 * calculate_drone_proximity_penalties(
+                distance_matrix=distance_matrix, arm=self.quad_arm, dt=self.control_dt,
+                penalty_fall_off=self.collision_falloff_radius,
+                max_penalty=self.rew_coeff["quadcol_bin_smooth_max"],
+                num_agents=self.num_agents,
+            )
+        else:
+            # no collision penalties if drones are still rolling on the floor
+            rew_collisions = np.zeros(self.num_agents)
+            rew_proximity = np.zeros(self.num_agents)
 
-        # penalties for being too close to other drones
-        rew_proximity = -1.0 * calculate_drone_proximity_penalties(
-            distance_matrix=distance_matrix, arm=self.quad_arm, dt=self.control_dt,
-            penalty_fall_off=self.collision_falloff_radius,
-            max_penalty=self.rew_coeff["quadcol_bin_smooth_max"],
-            num_agents=self.num_agents,
-        )
 
         # COLLISION BETWEEN QUAD AND OBSTACLE(S)
         if self.use_obstacles:
@@ -460,10 +483,14 @@ class QuadrotorEnvMulti(gym.Env):
         self.all_collisions = {'drone': np.sum(drone_col_matrix, axis=1), 'ground': ground_collisions,
                                'obstacle': np.sum(obst_quad_col_matrix, axis=1)}
 
+        # early termination 
+        self.early_terminate(infos)
+
         # Applying random forces for all collisions between drones and obstacles
         if self.apply_collision_force:
             for val in self.curr_drone_collisions:
-                perform_collision_between_drones(self.envs[val[0]].dynamics, self.envs[val[1]].dynamics)
+                if self.enable_collisions: # only model collisions after drones learn to fly
+                    perform_collision_between_drones(self.envs[val[0]].dynamics, self.envs[val[1]].dynamics)
             for val in curr_all_collisions:
                 perform_collision_with_obstacle(
                     drone_dyn=self.envs[val[0]].dynamics, obstacle_dyn=self.multi_obstacles.obstacles[val[1]],
