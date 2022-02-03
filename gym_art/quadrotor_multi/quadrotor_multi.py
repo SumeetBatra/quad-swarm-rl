@@ -592,6 +592,8 @@ class QuadrotorEnvMulti(gym.Env):
                         'num_collisions': self.collisions_per_episode,
                         'num_collisions_after_settle': self.collisions_after_settle,
                         f'num_collisions_{self.scenario.name()}': self.collisions_after_settle,
+                        'enable_collisions': self.enable_collisions,
+                        'deactivated_drones': len(self.deactive_drones),
                     }
                     if self.use_obstacles:
                         infos[i]['episode_extra_stats']['num_collisions_obst_quad'] = self.obst_quad_collisions_per_episode
