@@ -200,6 +200,8 @@ class QuadrotorEnvMulti(gym.Env):
 
         self.early_termination = early_termination
         self.contact_ground_post_collision = [0] * self.num_agents
+        self.drone_colls_per_episode = np.zeros(self.num_agents)
+        self.deactive_drones = {}
 
     def set_room_dims(self, dims):
         # dims is a (x, y, z) tuple
@@ -317,6 +319,7 @@ class QuadrotorEnvMulti(gym.Env):
         Here we count the average number of collisions with the walls and ground in the last N episodes
         Returns: True if drones are considered proficient at flying
         """
+        if len(self.crashes_in_recent_episodes) == 0: return False # edge case: 1st episode
         res = abs(np.mean(self.crashes_in_recent_episodes)) < 1 and len(self.crashes_in_recent_episodes) >= 10
         return res
 
@@ -326,10 +329,12 @@ class QuadrotorEnvMulti(gym.Env):
         for more than 1 second.
         """
         for i in range(self.num_agents):
-            if self.all_collisions['drone'][i] and self.all_collisions['ground'][i] and self.early_termination:
+            if self.enable_collisions and self.drone_colls_per_episode[i] and self.all_collisions['ground'][i] and self.early_termination:
                 self.contact_ground_post_collision[i] += 1
                 if self.contact_ground_post_collision[i] >= 100: # collides with and stays on the ground for more than 1 second
                     infos[i]['is_active'] = False
+                    if self.deactive_drones.get(i, None) is None:
+                        self.deactive_drones[i] = self.envs[i].dynamics.pos
 
     def init_scene_multi(self):
         models = tuple(e.dynamics.model for e in self.envs)
@@ -348,10 +353,11 @@ class QuadrotorEnvMulti(gym.Env):
         self.goal_central = np.mean(self.scenario.goals, axis=0)
 
         # model collisions b/w drones after they learn how to fly
+        self.deactive_drones = {}
         if not self.enable_collisions:
             self.enable_collisions = self.can_drones_fly()
 
-            # try to activate replay buffer if enabled
+        # try to activate replay buffer if enabled
         self.crashes_in_recent_episodes.append(self.crashes_last_episode)
         if self.use_replay_buffer and not self.activate_replay_buffer:
             self.activate_replay_buffer = self.can_drones_fly()
@@ -385,6 +391,7 @@ class QuadrotorEnvMulti(gym.Env):
             self.prev_obst_quad_collisions = []
 
         self.all_collisions = {val: [0.0 for _ in range(len(self.envs))] for val in ['drone', 'ground', 'obstacle']}
+        self.drone_colls_per_episode = np.zeros(self.num_agents)
 
         self.collisions_per_episode = self.collisions_after_settle = 0
         self.prev_drone_collisions, self.curr_drone_collisions = [], []
@@ -399,8 +406,11 @@ class QuadrotorEnvMulti(gym.Env):
 
         for i, a in enumerate(actions):
             self.envs[i].rew_coeff = self.rew_coeff
-
+            actions[0] = np.zeros(4)
             observation, reward, done, info = self.envs[i].step(a)
+            if self.deactive_drones.get(i, None) is not None:
+                self.envs[i].dynamics.pos = self.deactive_drones[i]
+                self.envs[i].dynamics.vel = np.zeros(3)
             obs.append(observation)
             rewards.append(reward)
             dones.append(done)
@@ -478,10 +488,11 @@ class QuadrotorEnvMulti(gym.Env):
             rew_obst_quad_proximity = np.zeros(self.num_agents)
 
         # Collisions with ground
-        ground_collisions = [1.0 if pos[2] < 0.25 else 0.0 for pos in self.pos]
+        ground_collisions = [1.0 if pos[2] < self.quad_arm else 0.0 for pos in self.pos]
 
         self.all_collisions = {'drone': np.sum(drone_col_matrix, axis=1), 'ground': ground_collisions,
                                'obstacle': np.sum(obst_quad_col_matrix, axis=1)}
+        self.drone_colls_per_episode += np.sum(drone_col_matrix, axis=1)
 
         # early termination 
         self.early_terminate(infos)
