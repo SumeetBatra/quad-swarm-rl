@@ -3,6 +3,7 @@ import copy
 from gym_art.quadrotor_multi.quad_experience_replay import ExperienceReplayWrapper
 from swarm_rl.env_wrappers.additional_input import QuadsAdditionalInputWrapper
 from swarm_rl.env_wrappers.discrete_actions import QuadsDiscreteActionsWrapper
+from swarm_rl.env_wrappers.time_delay import QuadsTimeDelayWrapper
 from swarm_rl.env_wrappers.reward_shaping import DEFAULT_QUAD_REWARD_SHAPING, QuadsRewardShapingWrapper, \
     DEFAULT_QUAD_REWARD_SHAPING_SINGLE
 
@@ -144,6 +145,8 @@ def make_quadrotor_env_multi(cfg, **kwargs):
         annealing = None
 
     env = QuadsRewardShapingWrapper(env, reward_shaping_scheme=reward_shaping, annealing=annealing)
+    if cfg.quads_time_delay:
+        env = QuadsTimeDelayWrapper(env)
     return env
 
 
