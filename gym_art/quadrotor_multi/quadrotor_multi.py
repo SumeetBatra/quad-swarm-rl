@@ -268,7 +268,8 @@ class QuadrotorEnvMulti(gym.Env):
         cur_pos = self.envs[i].dynamics.pos
         cur_vel = self.envs[i].dynamics.vel
         pos_neighbor = np.stack([self.envs[j].dynamics.pos for j in indices])
-        vel_neighbor = np.stack([self.envs[j].dynamics.vel for j in indices])
+        # vel_neighbor = np.stack([self.envs[j].dynamics.vel for j in indices])
+        vel_neighbor = np.stack([0, 0, 0] for j in indices)
         pos_rel = pos_neighbor - cur_pos
         if self.neighbor_rel_pos_mode == 1:
             pos_rel_mag = np.linalg.norm(pos_rel, axis=1)
@@ -276,7 +277,8 @@ class QuadrotorEnvMulti(gym.Env):
                                      for i in range(len(pos_rel_mag))])
             pos_rel = pos_rel - 2.0 * self.quad_arm * pos_rel_norm
 
-        vel_rel = vel_neighbor - cur_vel
+        # vel_rel = vel_neighbor - cur_vel
+        vel_rel = vel_neighbor
         return pos_rel, vel_rel
 
     def get_rel_pos_vel_stack(self):

@@ -167,10 +167,12 @@ class MultiObstacles:
             indices = [j for j in range(self.num_obstacles)]
 
         pos_neighbor = np.stack([self.obstacles[j].pos for j in indices])
-        vel_neighbor = np.stack([self.obstacles[j].vel for j in indices])
+        # vel_neighbor = np.stack([self.obstacles[j].vel for j in indices])
+        vel_neighbor = np.stack([0, 0, 0] for j in indices)
         # Shape of pos_rel and vel_vel: num_obst * 3
         pos_rel = pos_neighbor - quad_pos
-        vel_rel = vel_neighbor - quad_vel
+        # vel_rel = vel_neighbor - quad_vel
+        vel_rel = vel_neighbor
         return pos_rel, vel_rel
 
     def neighborhood_indices(self, quads_pos, quads_vel):
