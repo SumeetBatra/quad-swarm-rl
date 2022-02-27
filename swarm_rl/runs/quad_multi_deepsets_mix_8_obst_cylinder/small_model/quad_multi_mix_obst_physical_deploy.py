@@ -9,6 +9,9 @@ _params = ParamGrid([
     ('quads_early_termination', [True]),
     ('quads_init_random_state', [False]),
     ('quads_curriculum_min_obst', [2]),
+    ('--kl_loss_coeff', [1.0]),
+    ('--max_grad_norm', [10.0]),
+    ('--exploration_loss_coeff', [0.003])
 ])
 
 SMALL_MODEL_CLI = QUAD_8_OBSTACLES_PARAMETERZE_CLI + (
