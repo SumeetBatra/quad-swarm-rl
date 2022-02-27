@@ -9,9 +9,9 @@ _params = ParamGrid([
     ('quads_early_termination', [True]),
     ('quads_init_random_state', [False]),
     ('quads_curriculum_min_obst', [2]),
-    ('--kl_loss_coeff', [1.0]),
-    ('--max_grad_norm', [10.0]),
-    ('--exploration_loss_coeff', [0.003])
+    ('kl_loss_coeff', [1.0]),
+    ('max_grad_norm', [10.0]),
+    ('exploration_loss_coeff', [0.003])
 ])
 
 SMALL_MODEL_CLI = QUAD_8_OBSTACLES_PARAMETERZE_CLI + (
@@ -28,12 +28,12 @@ SMALL_MODEL_CLI = QUAD_8_OBSTACLES_PARAMETERZE_CLI + (
 )
 
 _experiment = Experiment(
-    'physical-deploy-curri-16-hidden-cylinder-small_model',
+    'physical-deploy-curri-16-hidden-cylinder-small_model_kl',
     SMALL_MODEL_CLI,
     _params.generate_params(randomize=False),
 )
 
-RUN_DESCRIPTION = RunDescription('curri-6_obst_quads_multi_obst_mix_8a_v116', experiments=[_experiment])
+RUN_DESCRIPTION = RunDescription('curri-6_obst_quads_multi_obst_mix_kl_8a_v116', experiments=[_experiment])
 
 # On Brain server, when you use num_workers = 72, if the system reports: Resource temporarily unavailable,
 # then, try to use two commands below
