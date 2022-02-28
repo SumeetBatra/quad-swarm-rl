@@ -553,7 +553,6 @@ class QuadrotorEnvMulti(gym.Env):
                 num_agents=self.num_agents,
                 proximity_mode=self.obst_proximity_mode,
                 obst_smooth_penalty_mode=self.obst_smooth_penalty_mode,
-                obstacle_num=self.obstacle_num
             )
         else:
             obst_quad_col_matrix = np.zeros((self.num_agents, self.obstacle_num))

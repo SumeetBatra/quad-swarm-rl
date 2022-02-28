@@ -692,8 +692,7 @@ class QuadrotorDynamics:
 # reasonable reward function for hovering at a goal and not flying too high
 def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, rew_coeff, action_prev,
                             quads_settle=False, quads_settle_range_meters=1.0, quads_vel_reward_out_range=0.8,
-                            quads_reward_ep_len=True, pre_pos=None, pos_decay_rate=1.0, use_pos_diff=False,
-                            pos_metric='normal'):
+                            quads_reward_ep_len=True, pre_pos=None, pos_decay_rate=1.0, use_pos_diff=False):
     ##################################################
     ## log to create a sharp peak at the goal
     dist = np.linalg.norm(goal - dynamics.pos)
@@ -711,20 +710,7 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
         cost_pos_diff = pos_decay_rate * 500 * cost_pos_diff_raw
     else:
         cost_pos_raw = dist
-        # cost_pos = rew_coeff["pos"] * cost_pos_raw
-        # 5 / 2 ^ (0.8 * x)
-        if pos_metric == 'normal':
-            cost_pos = 5 - 0.3 * dist
-            cost_pos = rew_coeff["pos"] * cost_pos_raw
-        elif pos_metric == 'piecewise':
-            if dist >= 1.0:
-                cost_pos = 5 / np.power(2, 0.8 * cost_pos_raw)
-            else:
-                # 4.177/(x * 20)^0.125)
-                cost_pos = 4.177 / np.power(20 * cost_pos_raw, 0.125)
-                cost_pos = min(cost_pos, 5.0)
-        else:
-            raise NotImplementedError(f'pos_metric: {pos_metric} is not supported!')
+        cost_pos = rew_coeff["pos"] * cost_pos_raw
 
         if pre_pos is None:
             pre_pos = dynamics.pos
@@ -757,9 +743,8 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
 
     ##################################################
     ## Loss orientation
-    cost_orient_raw = dynamics.rot[2, 2]
+    cost_orient_raw = -dynamics.rot[2, 2]
     cost_orient = rew_coeff["orient"] * cost_orient_raw
-
 
     cost_yaw_raw = -dynamics.rot[0, 0]
     cost_yaw = rew_coeff["yaw"] * cost_yaw_raw
@@ -778,7 +763,6 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
     ## Loss for constant uncontrolled rotation around vertical axis
     cost_spin_raw = (dynamics.omega[0] ** 2 + dynamics.omega[1] ** 2 + dynamics.omega[2] ** 2) ** 0.5
     cost_spin = rew_coeff["spin"] * cost_spin_raw
-
 
     ##################################################
     # loss crash
@@ -812,7 +796,6 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
         cost_act_change,
         cost_vel
     ])
-
 
     rew_info = {
         "rew_main": -cost_pos,
@@ -1286,7 +1269,6 @@ class QuadrotorSingle:
                                                    quads_vel_reward_out_range=self.quads_vel_reward_out_range,
                                                    quads_reward_ep_len=self.quads_reward_ep_len, pre_pos=self.pre_pos,
                                                    pos_decay_rate=self.pos_decay_rate, use_pos_diff=self.use_pos_diff,
-                                                   pos_metric=self.pos_metric
         )
         self.pre_pos = copy.deepcopy(self.dynamics.pos)
 
