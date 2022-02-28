@@ -715,7 +715,7 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
         # 5 / 2 ^ (0.8 * x)
         if pos_metric == 'normal':
             cost_pos = 5 - 0.3 * dist
-            cost_pos = np.clip(cost_pos, a_min=0.0, a_max=5.0) * 2.0
+            cost_pos = rew_coeff["pos"] * cost_pos_raw
         elif pos_metric == 'piecewise':
             if dist >= 1.0:
                 cost_pos = 5 / np.power(2, 0.8 * cost_pos_raw)
@@ -744,9 +744,7 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
     ##################################################
     # penalize amount of control effort
     cost_effort_raw = np.linalg.norm(action)
-    # cost_effort = rew_coeff["effort"] * cost_effort_raw
-    # e ^ (-0.5 * | | actions | |^ 2)
-    cost_effort = np.exp(-0.5 * (cost_effort_raw ** 2)) * 0.01
+    cost_effort = rew_coeff["effort"] * cost_effort_raw
 
     dact = action - action_prev
     cost_act_change_raw = (dact[0] ** 2 + dact[1] ** 2 + dact[2] ** 2 + dact[3] ** 2) ** 0.5
@@ -760,9 +758,8 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
     ##################################################
     ## Loss orientation
     cost_orient_raw = dynamics.rot[2, 2]
-    # cost_orient = rew_coeff["orient"] * cost_orient_raw
-    # max(rot, 0.0) * 0.01
-    cost_orient = max(cost_orient_raw, 0.0) * 0.075
+    cost_orient = rew_coeff["orient"] * cost_orient_raw
+
 
     cost_yaw_raw = -dynamics.rot[0, 0]
     cost_yaw = rew_coeff["yaw"] * cost_yaw_raw
@@ -780,9 +777,8 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
     ##################################################
     ## Loss for constant uncontrolled rotation around vertical axis
     cost_spin_raw = (dynamics.omega[0] ** 2 + dynamics.omega[1] ** 2 + dynamics.omega[2] ** 2) ** 0.5
-    # cost_spin = rew_coeff["spin"] * cost_spin_raw
-    # e ^ (- | | omega | |^ 2)
-    cost_spin = np.exp(-1.0 * (cost_spin_raw ** 2)) * 0.15
+    cost_spin = rew_coeff["spin"] * cost_spin_raw
+
 
     ##################################################
     # loss crash
@@ -803,52 +799,53 @@ def compute_reward_weighted(dynamics, goal, action, dt, crashed, time_remain, re
         dt_coeff = 2.0
     else:
         dt_coeff = 1.0
-    reward = dt_coeff * dt * np.sum([
+    reward = -dt_coeff * dt * np.sum([
         cost_pos,
-        # cost_pos_diff,
+        -1.0 * cost_pos_diff,
         cost_effort,
-        # cost_crash,
+        cost_crash,
         cost_orient,
-        # cost_yaw,
-        # cost_rotation,
-        # cost_attitude,
+        cost_yaw,
+        cost_rotation,
+        cost_attitude,
         cost_spin,
-        # cost_act_change,
-        # cost_vel
+        cost_act_change,
+        cost_vel
     ])
 
-    rew_info = {
-        "rew_main": cost_pos,
-        'rew_pos': cost_pos,
-        # 'rew_pos_diff': cost_pos_diff,
-        'rew_action': cost_effort,
-        # 'rew_crash': cost_crash,
-        # 'rew_crash_wall': cost_crash_wall,
-        # 'rew_crash_ceiling': cost_crash_ceiling,
-        # 'rew_crash_floor': cost_crash_floor,
-        "rew_orient": cost_orient,
-        # "rew_yaw": -cost_yaw,
-        # "rew_rot": -cost_rotation,
-        # "rew_attitude": -cost_attitude,
-        "rew_spin": cost_spin,
-        # "rew_act_change": -cost_act_change,
-        # "rew_vel": -cost_vel,
 
-        "rewraw_main": cost_pos_raw,
-        'rewraw_pos': cost_pos_raw,
-        # 'rewraw_pos_diff': cost_pos_diff_raw,
-        'rewraw_action': cost_effort_raw,
-        'rewraw_crash': cost_crash_raw,
-        'rewraw_crash_wall': cost_crash_wall_raw,
-        'rewraw_crash_ceiling': cost_crash_ceiling_raw,
-        'rewraw_crash_floor': cost_crash_floor_raw,
-        "rewraw_orient": cost_orient_raw,
-        # "rewraw_yaw": -cost_yaw_raw,
-        # "rewraw_rot": -cost_rotation_raw,
-        # "rewraw_attitude": -cost_attitude_raw,
-        "rewraw_spin": cost_spin_raw,
-        # "rewraw_act_change": -cost_act_change_raw,
-        # "rewraw_vel": -cost_vel_raw,
+    rew_info = {
+        "rew_main": -cost_pos,
+        'rew_pos': -cost_pos,
+        'rew_pos_diff': cost_pos_diff,
+        'rew_action': -cost_effort,
+        'rew_crash': -cost_crash,
+        'rew_crash_wall': -cost_crash_wall,
+        'rew_crash_ceiling': -cost_crash_ceiling,
+        'rew_crash_floor': -cost_crash_floor,
+        "rew_orient": -cost_orient,
+        "rew_yaw": -cost_yaw,
+        "rew_rot": -cost_rotation,
+        "rew_attitude": -cost_attitude,
+        "rew_spin": -cost_spin,
+        "rew_act_change": -cost_act_change,
+        "rew_vel": -cost_vel,
+
+        "rewraw_main": -cost_pos_raw,
+        'rewraw_pos': -cost_pos_raw,
+        'rewraw_pos_diff': cost_pos_diff_raw,
+        'rewraw_action': -cost_effort_raw,
+        'rewraw_crash': -cost_crash_raw,
+        'rewraw_crash_wall': -cost_crash_wall_raw,
+        'rewraw_crash_ceiling': -cost_crash_ceiling_raw,
+        'rewraw_crash_floor': -cost_crash_floor_raw,
+        "rewraw_orient": -cost_orient_raw,
+        "rewraw_yaw": -cost_yaw_raw,
+        "rewraw_rot": -cost_rotation_raw,
+        "rewraw_attitude": -cost_attitude_raw,
+        "rewraw_spin": -cost_spin_raw,
+        "rewraw_act_change": -cost_act_change_raw,
+        "rewraw_vel": -cost_vel_raw,
     }
 
     # report rewards in the same format as they are added to the actual agent's reward (easier to debug this way)

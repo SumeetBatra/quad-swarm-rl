@@ -267,56 +267,48 @@ def calculate_drone_proximity_penalties(distance_matrix, arm, dt, penalty_fall_o
     if not penalty_fall_off:
         # smooth penalties is disabled, so noop
         return np.zeros(num_agents)
-
-    distance_matrix -= arm
-    distance_matrix = np.minimum(distance_matrix, 0.15)
-    drone_col_reward = distance_matrix * 6.67
-
-    np.fill_diagonal(drone_col_reward, 0.0)
-
-    drone_col_reward = drone_col_reward / (num_agents - 1)
-    drone_col_reward = np.sum(drone_col_reward, axis=0)
+    penalties = (-max_penalty / (penalty_fall_off * arm)) * distance_matrix + max_penalty
+    np.fill_diagonal(penalties, 0.0)
+    penalties = np.maximum(penalties, 0.0)
+    penalties = np.sum(penalties, axis=0)
 
     if proximity_mode == 0:
-        return drone_col_reward
+        return penalties
     elif proximity_mode == 1:
-        return dt * drone_col_reward
+        return dt * penalties
     else:
-        return dt * drone_col_reward  # actual penalties per tick to be added to the overall reward
+        return dt * penalties  # actual penalties per tick to be added to the overall reward
+
 
 
 def calculate_obst_drone_proximity_penalties(distance_matrix, arm, dt, penalty_fall_off, max_penalty, num_agents,
-                                             proximity_mode, obst_smooth_penalty_mode, obstacle_num):
+                                             proximity_mode, obst_smooth_penalty_mode):
     if not penalty_fall_off:
         # smooth penalties is disabled, so noop
         return np.zeros(num_agents)
 
     if obst_smooth_penalty_mode == 'linear':
         # max_penalty x (penalty_fall_off * arm - dist) / penalty_fall_off * arm
-        # penalties = (-max_penalty / (penalty_fall_off * arm)) * distance_matrix + max_penalty
-        # penalties = np.maximum(penalties, 0.0)
-        distance_matrix = np.minimum(distance_matrix, 0.15)
-        drone_obst_col_reward = distance_matrix * 6.67
-
-        drone_obst_col_reward = drone_obst_col_reward / obstacle_num
+        penalties = (-max_penalty / (penalty_fall_off * arm)) * distance_matrix + max_penalty
+        penalties = np.maximum(penalties, 0.0)
     elif obst_smooth_penalty_mode == 'square':
         # Keep max penalty same as linear method, max_penalty * (penalty_fall_off - 1) / penalty_fall_off
         numerator_tmp = (distance_matrix - penalty_fall_off * arm)
         numerator_tmp = np.minimum(numerator_tmp, 0.0)
         numerator = np.square(numerator_tmp)
         denominator = penalty_fall_off * (penalty_fall_off - 1) * arm * arm
-        drone_obst_col_reward = max_penalty * numerator / denominator
+        penalties = max_penalty * numerator / denominator
     else:
         raise NotImplementedError(f'obst_smooth_penalty_mode: {obst_smooth_penalty_mode} is not supported!')
 
-    drone_obst_col_reward = np.sum(drone_obst_col_reward, axis=1)
+    penalties = np.sum(penalties, axis=1)
 
     if proximity_mode == 0:
-        return drone_obst_col_reward
+        return penalties
     elif proximity_mode == 1:
-        return dt * drone_obst_col_reward  # actual penalties per tick to be added to the overall reward
+        return dt * penalties  # actual penalties per tick to be added to the overall reward
     else:
-        return dt * drone_obst_col_reward  # actual penalties per tick to be added to the overall reward
+        return dt * penalties  # actual penalties per tick to be added to the overall reward
 
 
 def compute_col_norm_and_new_velocities(dyn1, dyn2):

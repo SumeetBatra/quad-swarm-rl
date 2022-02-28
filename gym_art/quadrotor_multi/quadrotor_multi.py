@@ -492,8 +492,7 @@ class QuadrotorEnvMulti(gym.Env):
                 rew_quad_prox_vel_collision = self.get_collision_penalty_by_vel(drone_pair=self.curr_drone_collisions)
 
 
-        # rew_collisions = self.rew_coeff["quadcol_bin"] * rew_collisions_raw
-        rew_collisions = 0.0 * rew_collisions_raw
+        rew_collisions = self.rew_coeff["quadcol_bin"] * rew_collisions_raw
 
         # penalties for being too close to other drones
         rew_proximity = calculate_drone_proximity_penalties(
@@ -544,8 +543,7 @@ class QuadrotorEnvMulti(gym.Env):
                 if self.print_info:
                     self.real_cur_ep_obst_counter += len(obst_quad_last_step_unique_collisions)
 
-            # rew_collisions_obst_quad = self.rew_coeff["quadcol_bin_obst"] * rew_obst_quad_collisions_raw
-            rew_collisions_obst_quad = 0.0 * rew_obst_quad_collisions_raw
+            rew_collisions_obst_quad = self.rew_coeff["quadcol_bin_obst"] * rew_obst_quad_collisions_raw
 
             # penalties for low distance between obstacles and drones
             rew_obst_quad_proximity = calculate_obst_drone_proximity_penalties(
@@ -939,40 +937,27 @@ class QuadrotorEnvMulti(gym.Env):
                         quad_arm=self.quad_arm, room_dims=self.room_dims, inf_height=self.obst_inf_height,
                         crash_mode=self.crash_mode)
 
-        self.early_terminate(infos, rewards)
         for i in range(self.num_agents):
-            if self.all_collisions['ground'][i]:
-                for k in infos[i]['rewards'].keys():
-                    infos[i]['rewards'][k] = 0
-                infos[i]["rewards"]["rew_proximity"] = 0
-                infos[i]["rewards"]["rew_quadcol"] = 0
-                infos[i]["rewards"]["rewraw_quadcol"] = 0
-                if self.use_obstacles:
-                    infos[i]["rewards"]["rew_quadcol_obstacle"] = 0
-                    infos[i]["rewards"]["rewraw_quadcol_obstacle"] = 0
-                    infos[i]["rewards"]["rew_obst_quad_proximity"] = 0
-                    infos[i]["rewards"]["rew_obst_quad_proximity_by_vel"] = 0
-            else:
-                # rewards[i] += rew_collisions[i]
-                infos[i]["rewards"]["rew_quadcol"] = rew_collisions[i]
-                infos[i]["rewards"]["rewraw_quadcol"] = rew_collisions_raw[i]
+            rewards[i] += rew_collisions[i]
+            infos[i]["rewards"]["rew_quadcol"] = rew_collisions[i]
+            infos[i]["rewards"]["rewraw_quadcol"] = rew_collisions_raw[i]
 
-                rewards[i] += rew_proximity[i]
-                infos[i]["rewards"]["rew_proximity"] = rew_proximity[i]
+            rewards[i] += rew_proximity[i]
+            infos[i]["rewards"]["rew_proximity"] = rew_proximity[i]
 
-                # rewards[i] += rew_quad_prox_vel_collision[i]
-                # infos[i]["rewards"]["rew_quad_proximity_by_vel"] = rew_quad_prox_vel_collision[i]
+            # rewards[i] += rew_quad_prox_vel_collision[i]
+            # infos[i]["rewards"]["rew_quad_proximity_by_vel"] = rew_quad_prox_vel_collision[i]
 
-                if self.use_obstacles:
-                    # rewards[i] += rew_collisions_obst_quad[i]
-                    rewards[i] += rew_obst_quad_proximity[i]
-                    # rewards[i] += rew_drone_obst_prox_vel_collision[i]
+            if self.use_obstacles:
+                rewards[i] += rew_collisions_obst_quad[i]
+                rewards[i] += rew_obst_quad_proximity[i]
+                # rewards[i] += rew_drone_obst_prox_vel_collision[i]
 
-                    infos[i]["rewards"]["rew_quadcol_obstacle"] = rew_collisions_obst_quad[i]
-                    infos[i]["rewards"]["rewraw_quadcol_obstacle"] = rew_obst_quad_collisions_raw[i]
-                    infos[i]["rewards"]["rew_obst_quad_proximity"] = rew_obst_quad_proximity[i]
+                infos[i]["rewards"]["rew_quadcol_obstacle"] = rew_collisions_obst_quad[i]
+                infos[i]["rewards"]["rewraw_quadcol_obstacle"] = rew_obst_quad_collisions_raw[i]
+                infos[i]["rewards"]["rew_obst_quad_proximity"] = rew_obst_quad_proximity[i]
 
-                    infos[i]["rewards"]["rew_obst_quad_proximity_by_vel"] = rew_drone_obst_prox_vel_collision[i]
+                # infos[i]["rewards"]["rew_obst_quad_proximity_by_vel"] = rew_drone_obst_prox_vel_collision[i]
 
         # Run the scenario passed to self.quads_mode
         if self.scenario.quads_mode in QUADS_MODE_OBST_INFO_LIST or (
